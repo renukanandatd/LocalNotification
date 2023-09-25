@@ -1,7 +1,6 @@
 package com.example.localnotification
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -9,14 +8,12 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.example.localnotification.databinding.ActivityMainBinding
-import java.nio.file.attribute.AclEntry.Builder
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,8 +21,8 @@ class MainActivity : AppCompatActivity() {
     val CHANNEL_ID = "1"
     var counter = 0
     val PERMISSION_REQUEST_CODE = 1
+    val NOTIFICATION_ID = 1
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mainBinding = ActivityMainBinding.inflate(layoutInflater)
@@ -34,50 +31,56 @@ class MainActivity : AppCompatActivity() {
 
         mainBinding.notification.setOnClickListener {
             counter++
-            mainBinding.notification.text=counter.toString()
-            if(counter%5==0){
-                startNotification()
+            mainBinding.notification.text = counter.toString()
+            if (counter % 5 == 0) {
+                if (ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.ACCESS_NOTIFICATION_POLICY
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    ActivityCompat.requestPermissions(
+                        this,
+                        arrayOf(Manifest.permission.ACCESS_NOTIFICATION_POLICY),
+                        PERMISSION_REQUEST_CODE
+                    )
+                } else {
+                    startNotification()
+                }
             }
         }
     }
 
-
-    fun startNotification(){
+    fun startNotification() {
         val builder = NotificationCompat.Builder(this@MainActivity, CHANNEL_ID)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channel =
-                    NotificationChannel(CHANNEL_ID, "1", NotificationManager.IMPORTANCE_DEFAULT)
+            val channel =
+                NotificationChannel(CHANNEL_ID, "Channel Name", NotificationManager.IMPORTANCE_DEFAULT)
 
-                val manager: NotificationManager =
-                    getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val manager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-                builder.setSmallIcon(R.drawable.notification)
-                    .setContentTitle("Local Notification")
-                    .setContentText("This number is divisible by 5")
-            } else {
-
-                builder.setSmallIcon(R.drawable.notification)
-                    .setContentTitle("Local Notification")
-                    .setContentText("This number is divisible by 5")
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-
-            }
-            val notificationManager = NotificationManagerCompat.from(this@MainActivity)
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return
+            manager.createNotificationChannel(channel)
         }
-        notificationManager.notify(1, builder.build())
 
+        builder.setSmallIcon(R.drawable.notification)
+            .setContentTitle("Local Notification")
+            .setContentText("This number is divisible by 5")
+
+        val notificationManager = NotificationManagerCompat.from(this@MainActivity)
+        notificationManager.notify(NOTIFICATION_ID, builder.build())
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSION_REQUEST_CODE && grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            startNotification()
+        }
     }
 }
